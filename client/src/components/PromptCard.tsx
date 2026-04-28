@@ -105,24 +105,24 @@ export default function PromptCard({ prompt, onClick, searchQuery }: PromptCardP
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ scale: 1.03, y: -4 }}
       transition={{ duration: 0.2 }}
     >
       <Card 
-        className="h-full cursor-pointer hover:shadow-lg transition-shadow relative overflow-hidden group"
+        className="h-full cursor-pointer hover:shadow-lg transition-all relative overflow-hidden group border-2 hover:border-primary/30"
         onClick={onClick}
       >
         {/* Trending/Featured Badge */}
         {(prompt.isTrending || prompt.isFeatured) && (
-          <div className="absolute top-3 right-3 z-10">
+          <div className="absolute top-2 right-2 z-10">
             {prompt.isTrending && (
-              <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
+              <Badge className="bg-orange-500 text-white border-0 text-xs px-2 py-0.5">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 Trending
               </Badge>
             )}
             {prompt.isFeatured && !prompt.isTrending && (
-              <Badge className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0">
+              <Badge className="bg-violet-500 text-white border-0 text-xs px-2 py-0.5">
                 <Star className="h-3 w-3 mr-1" />
                 Featured
               </Badge>

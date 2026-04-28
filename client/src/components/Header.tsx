@@ -47,8 +47,8 @@ export default function Header() {
           {/* Logo */}
           <Link href="/">
             <a className="flex items-center gap-3 group">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 grid place-items-center shadow-lg group-hover:scale-105 transition-transform">
-                <Lightbulb className="h-5 w-5 text-white" />
+              <div className="h-10 w-10 rounded-xl bg-primary grid place-items-center group-hover:opacity-90 transition-opacity">
+                <Lightbulb className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <h1 className="text-lg font-bold tracking-tight">PromptWise</h1>
@@ -58,15 +58,15 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-2 rounded-full border border-border bg-card/70 p-1">
+          <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
                 <a
                   className={[
-                    "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
                     isActive(item.href)
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70",
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   ].join(" ")}
                 >
                   {item.label}
@@ -83,7 +83,7 @@ export default function Header() {
                 Sign Out
               </Button>
             ) : (
-              <Button className="hidden sm:flex bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:opacity-90" onClick={() => setAuthDialogOpen(true)}>
+              <Button className="hidden sm:flex" onClick={() => setAuthDialogOpen(true)}>
                 Sign In
               </Button>
             )}
@@ -125,7 +125,7 @@ export default function Header() {
                     Sign Out
                   </Button>
                 ) : (
-                  <Button className="flex-1 bg-gradient-to-r from-violet-500 to-fuchsia-500" onClick={() => setAuthDialogOpen(true)}>
+                  <Button className="flex-1" onClick={() => setAuthDialogOpen(true)}>
                     Sign In
                   </Button>
                 )}
