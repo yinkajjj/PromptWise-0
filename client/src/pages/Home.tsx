@@ -22,6 +22,13 @@ type GeneratedPrompt = {
   tags: string[];
 };
 
+type PromptTier = {
+  level: "basic" | "better" | "expert";
+  title: string;
+  prompt: string;
+  description: string;
+};
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [generationTopic, setGenerationTopic] = useState("");
@@ -45,6 +52,13 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [allPromptsExpanded, setAllPromptsExpanded] = useState(false);
 
+  // New state for intelligent flow
+  const [showRefinement, setShowRefinement] = useState(false);
+  const [tieredPrompts, setTieredPrompts] = useState<PromptTier[]>([]);
+  const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null);
+  const [refinementPlatform, setRefinementPlatform] = useState("");
+  const [refinementContentType, setRefinementContentType] = useState("");
+
   useEffect(() => {
     setRecentIntents(getRecentSearchIntents());
   }, []);
@@ -53,6 +67,18 @@ export default function Home() {
     const topic = generationTopic.trim();
     if (!topic) {
       toast.error("Enter a topic first");
+      return;
+    }
+
+    // Show refinement questions first (intelligent flow)
+    if (!showRefinement && tieredPrompts.length === 0) {
+      setShowRefinement(true);
+      return;
+    }
+
+    // If refinement is shown, generate 3-tier prompts
+    if (showRefinement) {
+      generate3TierPrompts(topic);
       return;
     }
 
@@ -104,6 +130,48 @@ export default function Home() {
       // Generation button is released after job submission; progress is tracked by polling.
       setIsGenerating(false);
     }
+  };
+
+  const generate3TierPrompts = (topic: string) => {
+    saveToHistory(topic);
+
+    const platform = refinementPlatform || "TikTok/YouTube Shorts/Reels";
+    const contentType = refinementContentType || "educational";
+    const selectedCat = selectedCategory === "all" ? "general content" : selectedCategory;
+    const selectedToolName = selectedTool === "all" ? "AI tools" : selectedTool;
+
+    // Generate 3 tiers of prompts
+    const basic: PromptTier = {
+      level: "basic",
+      title: "Basic Prompt",
+      description: "Simple and easy to use",
+      prompt: `Create ${selectedCat} content about: ${topic}`,
+    };
+
+    const better: PromptTier = {
+      level: "better",
+      title: "Better Prompt",
+      description: "More detailed with context",
+      prompt: `I need to create ${contentType} ${selectedCat} for ${platform}. Topic: ${topic}. Please provide engaging ideas that work well for short-form video format, with hooks to grab attention in the first 3 seconds. Include: suggested video structure, key points to cover, and a strong call-to-action.`,
+    };
+
+    const expert: PromptTier = {
+      level: "expert",
+      title: "Expert Prompt",
+      description: "Comprehensive with role, task, format, and tone",
+      prompt: `Role: You are an expert short-form video content strategist specializing in ${platform} with deep knowledge of viral trends and audience psychology.\n\nTask: Create a detailed content plan for ${contentType} ${selectedCat} about "${topic}".\n\nFormat your response with:\n1. Hook (first 3 seconds) - What will stop the scroll?\n2. Core Message - The main value or insight\n3. Visual Suggestions - What should viewers see?\n4. Script Structure - Timing breakdown for 15-60 second video\n5. Call-to-Action - How to drive engagement\n6. Hashtag Strategy - 5-7 relevant tags\n\nTone: ${selectedTone === "All Tones" ? "Engaging and authentic" : selectedTone}\n\nContext: This is for ${selectedToolName}. The content should be optimized for mobile viewing, designed to maximize watch time, and encourage comments/shares. Focus on delivering value quickly while maintaining entertainment.`,
+    };
+
+    setTieredPrompts([basic, better, expert]);
+    setShowRefinement(false);
+    toast.success("✨ Generated 3 prompt versions for you!");
+  };
+
+  const handleCopyPrompt = (prompt: string, level: string) => {
+    navigator.clipboard.writeText(prompt);
+    setCopiedPrompt(level);
+    toast.success(`${level} prompt copied!`);
+    setTimeout(() => setCopiedPrompt(null), 2000);
   };
 
   const handleCancelGeneration = async () => {
@@ -273,19 +341,19 @@ export default function Home() {
             >
               {/* Clean Headline */}
               <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-                Turn your idea into a better AI prompt.
+                Better AI prompts for your short-form videos.
               </h1>
 
               {/* Short Subtext */}
               <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                Describe what you want. PromptWise will help you create prompts you can use in ChatGPT, Claude, Gemini, Midjourney, and more.
+                The only prompt tool built specifically for TikTok, YouTube Shorts, and Reels creators. Turn your idea into 3 versions: Basic, Better, and Expert.
               </p>
 
               {/* One Big Input Box */}
               <div className="max-w-2xl mx-auto mt-10">
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <Textarea
-                    placeholder="I want to write a cover letter for an IT support job in Calgary."
+                    placeholder="I want to make videos about AI tools for beginners..."
                     value={generationTopic}
                     onChange={(e) => {
                       setGenerationTopic(e.target.value);
@@ -308,15 +376,144 @@ export default function Home() {
                     style={{ minHeight: '80px', maxHeight: '120px' }}
                   />
 
+                  {/* Beginner-Friendly Options */}
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {/* Purpose/Category Dropdown */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        What's your video about?
+                      </label>
+                      <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="w-full p-3 bg-card border-2 rounded-lg focus:border-primary transition-colors text-base"
+                      >
+                        <option value="all">Any topic</option>
+                        <option value="tutorial">Tutorial / How-to</option>
+                        <option value="education">Educational content</option>
+                        <option value="entertainment">Entertainment / Comedy</option>
+                        <option value="lifestyle">Lifestyle / Daily vlog</option>
+                        <option value="product-review">Product review</option>
+                        <option value="storytelling">Storytelling</option>
+                        <option value="motivation">Motivation / Inspiration</option>
+                        <option value="challenge">Challenge / Trend</option>
+                        <option value="behind-the-scenes">Behind the scenes</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    {/* Tone Dropdown */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        What tone do you want?
+                      </label>
+                      <select
+                        value={selectedTone}
+                        onChange={(e) => setSelectedTone(e.target.value)}
+                        className="w-full p-3 bg-card border-2 rounded-lg focus:border-primary transition-colors text-base"
+                      >
+                        <option value="All Tones">Any tone</option>
+                        <option value="Professional">Professional</option>
+                        <option value="Friendly">Friendly</option>
+                        <option value="Simple">Simple</option>
+                        <option value="Confident">Confident</option>
+                        <option value="Creative">Creative</option>
+                      </select>
+                    </div>
+
+                    {/* AI Tool Dropdown */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Which AI tool will you use?
+                      </label>
+                      <select
+                        value={selectedTool}
+                        onChange={(e) => setSelectedTool(e.target.value)}
+                        className="w-full p-3 bg-card border-2 rounded-lg focus:border-primary transition-colors text-base"
+                      >
+                        <option value="all">All tools</option>
+                        <option value="chatgpt">ChatGPT</option>
+                        <option value="claude">Claude</option>
+                        <option value="gemini">Gemini</option>
+                        <option value="copilot">Copilot</option>
+                        <option value="midjourney">Midjourney</option>
+                        <option value="dalle">DALL-E</option>
+                        <option value="not-sure">Not sure</option>
+                      </select>
+                    </div>
+                  </div>
+
                   {/* One Main Button */}
-                  <Button 
-                    onClick={handleGenerate} 
-                    disabled={isGenerating} 
-                    size="lg"
-                    className="w-full md:w-auto px-12 py-6 text-lg hover:scale-105 transition-all"
-                  >
-                    {isGenerating ? "Generating..." : "Generate Prompt"}
-                  </Button>
+                  <div className="flex justify-center">
+                    <Button 
+                      onClick={handleGenerate} 
+                      disabled={isGenerating} 
+                      size="lg"
+                      className="w-full md:w-auto px-12 py-6 text-lg hover:scale-105 transition-all"
+                    >
+                      {isGenerating ? "Generating..." : showRefinement ? "Generate My Prompts" : "Generate Prompt"}
+                    </Button>
+                  </div>
+
+                  {/* Refinement Questions - Show after first click */}
+                  <AnimatePresence>
+                    {showRefinement && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-primary/5 border border-primary/20 rounded-lg p-6 space-y-4"
+                      >
+                        <div className="text-center mb-4">
+                          <h3 className="text-lg font-semibold mb-1">🎯 Let's refine this!</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Answer these to get better prompts
+                          </p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">
+                              What platform are you targeting?
+                            </label>
+                            <select
+                              value={refinementPlatform}
+                              onChange={(e) => setRefinementPlatform(e.target.value)}
+                              className="w-full p-3 bg-background border-2 rounded-lg focus:border-primary transition-colors"
+                            >
+                              <option value="">TikTok/YouTube Shorts/Reels (default)</option>
+                              <option value="TikTok">TikTok only</option>
+                              <option value="YouTube Shorts">YouTube Shorts only</option>
+                              <option value="Instagram Reels">Instagram Reels only</option>
+                              <option value="All short-form platforms">All platforms</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">
+                              What type of content do you prefer?
+                            </label>
+                            <select
+                              value={refinementContentType}
+                              onChange={(e) => setRefinementContentType(e.target.value)}
+                              className="w-full p-3 bg-background border-2 rounded-lg focus:border-primary transition-colors"
+                            >
+                              <option value="educational">Educational</option>
+                              <option value="entertaining">Entertaining / Funny</option>
+                              <option value="storytelling">Storytelling</option>
+                              <option value="tutorial">Tutorial / How-to</option>
+                              <option value="review">Review / Opinion</option>
+                              <option value="motivational">Motivational</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-center text-muted-foreground mt-4">
+                          💡 These details help us create prompts optimized for short-form video
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Progress indicator - only show when generating */}
                   {activeJobId && (
@@ -345,6 +542,105 @@ export default function Home() {
                       </div>
                     </div>
                   )}
+
+                  {/* 3-Tier Prompt Cards Display */}
+                  <AnimatePresence>
+                    {tieredPrompts.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6 mt-8"
+                      >
+                        <div className="text-center mb-6">
+                          <h3 className="text-2xl font-bold mb-2">✨ Your 3 Prompt Versions</h3>
+                          <p className="text-muted-foreground">
+                            Choose the one that fits your needs. Copy and paste into your AI tool.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-6 max-w-4xl mx-auto">
+                          {tieredPrompts.map((tier, idx) => (
+                            <motion.div
+                              key={tier.level}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.15 }}
+                              className={`bg-card border-2 rounded-xl p-6 hover:shadow-lg transition-all ${
+                                tier.level === "expert" 
+                                  ? "border-primary/50 bg-primary/5" 
+                                  : "border-border"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between mb-4">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {tier.level === "basic" && <span className="text-2xl">📝</span>}
+                                    {tier.level === "better" && <span className="text-2xl">🎯</span>}
+                                    {tier.level === "expert" && <span className="text-2xl">🚀</span>}
+                                    <h4 className="text-xl font-bold">{tier.title}</h4>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{tier.description}</p>
+                                </div>
+                                <Button
+                                  onClick={() => handleCopyPrompt(tier.prompt, tier.title)}
+                                  variant={copiedPrompt === tier.title ? "default" : "outline"}
+                                  size="sm"
+                                  className="shrink-0"
+                                >
+                                  {copiedPrompt === tier.title ? "✓ Copied!" : "Copy"}
+                                </Button>
+                              </div>
+
+                              <div className="bg-background/50 rounded-lg p-4 border">
+                                <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">
+                                  {tier.prompt}
+                                </pre>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+
+                        {/* Follow-up Actions */}
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+                          <Button
+                            onClick={() => {
+                              setGenerationTopic("");
+                              setTieredPrompts([]);
+                              setRefinementPlatform("");
+                              setRefinementContentType("");
+                              setShowRefinement(false);
+                            }}
+                            variant="outline"
+                            size="lg"
+                            className="gap-2"
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            Generate New Prompt
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setTieredPrompts([]);
+                              setShowRefinement(true);
+                            }}
+                            variant="default"
+                            size="lg"
+                            className="gap-2"
+                          >
+                            <BrainCircuit className="h-4 w-4" />
+                            Refine & Regenerate
+                          </Button>
+                        </div>
+
+                        {/* Helpful tip */}
+                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-center max-w-2xl mx-auto">
+                          <p className="text-sm">
+                            <strong>💡 Pro Tip:</strong> The Expert Prompt works best for detailed, high-quality content. 
+                            The Basic Prompt is great for quick ideas. Try different versions to see what your AI tool produces!
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </motion.div>
