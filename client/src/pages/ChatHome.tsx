@@ -329,7 +329,7 @@ export default function ChatHome() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-4 py-6 max-w-4xl">
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
@@ -339,7 +339,7 @@ export default function ChatHome() {
                 exit={{ opacity: 0, y: -20 }}
                 className={`mb-6 flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <div className={`max-w-[85%] ${message.role === "user" ? "ml-auto" : "mr-auto"}`}>
+                <div className={`max-w-[95%] ${message.role === "user" ? "ml-auto" : "mr-auto"}`}>
                   {/* Message bubble */}
                   <div
                     className={`rounded-2xl px-5 py-4 ${
@@ -357,7 +357,7 @@ export default function ChatHome() {
 
                   {/* Generated prompts */}
                   {message.prompts && message.prompts.length > 0 && (
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {message.prompts.map((promptObj, idx) => (
                         <motion.div
                           key={idx}
