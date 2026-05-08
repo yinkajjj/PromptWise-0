@@ -113,18 +113,11 @@ export default function Home() {
       }
     }, 500);
 
-    // Generate base prompts using universal system
-    const basicPrompt = generateUniversalPrompt(selectedUseCase, "basic", topic, category, tone);
+    // Generate base prompts using universal system (Better & Expert only)
     const betterPrompt = generateUniversalPrompt(selectedUseCase, "better", topic, category, tone);
     const expertPrompt = generateUniversalPrompt(selectedUseCase, "expert", topic, category, tone);
 
     // 🎯 ENRICH PROMPTS WITH RESEARCHED CONTEXT
-    const enrichedBasic = enrichPromptWithContext(
-      typeof basicPrompt === "string" ? basicPrompt : basicPrompt[0],
-      topicContext,
-      "basic"
-    );
-
     const enrichedBetter = enrichPromptWithContext(
       typeof betterPrompt === "string" ? betterPrompt : betterPrompt[0],
       topicContext,
@@ -136,13 +129,6 @@ export default function Home() {
       topicContext,
       "expert"
     );
-
-    const basic: PromptTier = {
-      level: "basic",
-      title: "Basic Prompt",
-      description: "Quick start for beginners",
-      prompt: enrichedBasic,
-    };
 
     const better: PromptTier = {
       level: "better",
@@ -158,7 +144,7 @@ export default function Home() {
       prompt: enrichedExpert,
     };
 
-    setTieredPrompts([basic, better, expert]);
+    setTieredPrompts([better, expert]);
     setShowRefinement(false);
 
     // Show topic analysis only for video content (for now)
@@ -175,7 +161,7 @@ export default function Home() {
       setShowTopicAnalysis(false);
     }
 
-    toast.success(`✨ Generated 3 research-powered ${useCase?.name || "unique"} prompts!`);
+    toast.success(`✨ Generated 2 research-powered ${useCase?.name || "unique"} prompts!`);
   };
 
   const handleCopyPrompt = (prompt: string, level: string) => {
@@ -195,8 +181,8 @@ export default function Home() {
       const saved = savePromptToLibrary({
         topic: generationTopic,
         basic: tieredPrompts[0].prompt,
-        better: tieredPrompts[1].prompt,
-        expert: tieredPrompts[2].prompt,
+        better: tieredPrompts[0].prompt,
+        expert: tieredPrompts[1].prompt,
         category: selectedCategory,
         platform: refinementPlatform || "TikTok/YouTube Shorts/Reels",
         tone: selectedTone,
@@ -589,7 +575,7 @@ export default function Home() {
                     </div>
                   )}
 
-                  {/* 3-Tier Prompt Cards Display */}
+                  {/* 2-Tier Prompt Cards Display */}
                   <AnimatePresence>
                     {tieredPrompts.length > 0 && (
                       <motion.div
@@ -598,15 +584,15 @@ export default function Home() {
                         className="mt-8"
                       >
                         <div className="text-center mb-8">
-                          <h3 className="text-2xl font-bold mb-2">✨ Your 3 Prompt Versions</h3>
+                          <h3 className="text-2xl font-bold mb-2">✨ Your 2 Intelligent Prompts</h3>
                           <p className="text-muted-foreground">
                             Choose the one that fits your needs. Copy and paste into your AI tool.
                           </p>
                         </div>
 
-                        {/* Full-width grid layout with controlled max-width */}
+                        {/* Full-width grid layout - 50:50 split */}
                         <div className="w-full max-w-[1600px] mx-auto px-4">
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {tieredPrompts.map((tier, idx) => (
                             <motion.div
                               key={tier.level}
@@ -614,7 +600,7 @@ export default function Home() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.1 }}
                               className={`bg-card border-2 rounded-xl p-6 hover:shadow-lg transition-all flex flex-col ${
-                                tier.level === "expert" 
+                                tier.level === "expert"
                                   ? "border-primary/50 bg-primary/5" 
                                   : "border-border"
                               }`}
