@@ -15,6 +15,8 @@ import { saveToHistory } from "@/lib/promptHistory";
 import { savePromptToLibrary } from "@/lib/promptLibrary";
 import { analyzeTopicViability, getSuggestedCreators, getTrendingHashtags, getSeasonalInsights, type TopicAnalysis } from "@/lib/topicIntelligence";
 import { remixPrompt, type RemixType } from "@/lib/promptRemix";
+import { useCases, type UseCase } from "@/lib/useCases";
+import { generateUniversalPrompt } from "@/lib/universalPromptGenerator";
 import { toast } from "sonner";
 
 type GeneratedPrompt = {
@@ -68,6 +70,10 @@ export default function Home() {
   const [showTopicAnalysis, setShowTopicAnalysis] = useState(false);
   const [topicAnalysis, setTopicAnalysis] = useState<TopicAnalysis | null>(null);
   const [selectedPromptForRemix, setSelectedPromptForRemix] = useState<{tier: string, prompt: string} | null>(null);
+
+  // Universal use case system
+  const [selectedUseCase, setSelectedUseCase] = useState<string>("video-content");
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string>("");
 
   useEffect(() => {
     setRecentIntents(getRecentSearchIntents());
@@ -145,239 +151,54 @@ export default function Home() {
   const generate3TierPrompts = (topic: string) => {
     saveToHistory(topic);
 
-    const platform = refinementPlatform || "TikTok/YouTube Shorts/Reels";
-    const contentType = refinementContentType || "educational";
-    const selectedCat = selectedCategory === "all" ? "general content" : selectedCategory;
-    const selectedToolName = selectedTool === "all" ? "AI tools" : selectedTool;
-    const tone = selectedTone === "All Tones" ? "Engaging" : selectedTone;
+    const tone = selectedTone === "All Tones" ? "Professional" : selectedTone;
+    const category = selectedSubCategory || useCases.find(u => u.id === selectedUseCase)?.categories[0] || "General";
+    const useCase = useCases.find(u => u.id === selectedUseCase);
 
-    // Platform-specific intelligence
-    const platformSpecs = {
-      duration: platform.includes("TikTok") ? "15-60 seconds" : platform.includes("Shorts") ? "15-60 seconds" : platform.includes("Reels") ? "15-90 seconds" : "15-60 seconds",
-      aspectRatio: "9:16 vertical",
-      keyFeature: platform.includes("TikTok") ? "trending sounds" : platform.includes("Shorts") ? "strong thumbnails" : platform.includes("Reels") ? "visual effects" : "mobile optimization"
-    };
+    // Generate using universal system
+    const basicPrompt = generateUniversalPrompt(selectedUseCase, "basic", topic, category, tone);
+    const betterPrompt = generateUniversalPrompt(selectedUseCase, "better", topic, category, tone);
+    const expertPrompt = generateUniversalPrompt(selectedUseCase, "expert", topic, category, tone);
 
-    // Generate 3 TRULY DIFFERENT approaches
-
-    // BASIC: Simple, direct approach
     const basic: PromptTier = {
       level: "basic",
       title: "Basic Prompt",
       description: "Quick start for beginners",
-      prompt: `Create a ${platformSpecs.duration} ${selectedCat} video about "${topic}" for ${platform}. Make it engaging and optimized for short-form video.`,
+      prompt: typeof basicPrompt === "string" ? basicPrompt : basicPrompt[0],
     };
-
-    // BETTER: Multiple creative approaches to choose from
-    const betterApproaches = [
-      // Approach 1: Story-driven
-      `I want to create a ${contentType} ${selectedCat} video about "${topic}" for ${platform}.
-
-**Storytelling Approach:**
-• Start with a personal story or relatable scenario
-• Use the "But then I discovered..." structure
-• Show transformation or surprising revelation
-• Duration: ${platformSpecs.duration}, Format: ${platformSpecs.aspectRatio}
-
-**Key Elements:**
-- Hook: Share a common misconception or problem
-- Middle: Your discovery/solution about ${topic}
-- End: Result or call-to-action
-- Tone: ${tone}
-- Platform optimization: ${platformSpecs.keyFeature}
-
-Make it feel authentic and conversational, not scripted.`,
-
-      // Approach 2: List/Tips format
-      `Create a ${selectedCat} video for ${platform} about "${topic}".
-
-**Quick Tips Format:**
-• "X Things About ${topic} Nobody Tells You"
-• Fast-paced, 5-7 second per tip
-• Text overlays for each point
-• Visual examples for each tip
-
-**Structure:**
-- Hook: "If you're into ${topic}, you NEED to know this"
-- Deliver 3-5 actionable tips rapid-fire
-- Each tip: statement + quick visual proof
-- End with: "Save this & follow for more"
-- Duration: ${platformSpecs.duration}
-- Tone: ${tone} and direct
-
-Use pattern interrupts every 10 seconds to maintain attention.`,
-
-      // Approach 3: Challenge/Experiment
-      `Make a ${selectedCat} video testing/trying "${topic}" for ${platform}.
-
-**Challenge Format:**
-• "I Tried ${topic} For [X Days/Times]"
-• Show the process and unexpected results
-• Include failures or struggles (builds authenticity)
-• Time-lapse or before/after reveals
-
-**Flow:**
-- Open: "Everyone talks about ${topic}, so I tested it"
-- Middle: Show 2-3 key moments from the journey  
-- Twist: Something surprising you learned
-- Close: "Would you try this? Comment below"
-- ${platformSpecs.duration}, ${platformSpecs.aspectRatio}
-- Tone: ${tone} with genuine reactions
-
-Focus on entertainment value, not just education.`,
-
-      // Approach 4: Myth-busting
-      `Create a ${selectedCat} myth-busting video about "${topic}" for ${platform}.
-
-**Myth vs Reality Format:**
-• Challenge common beliefs about ${topic}
-• "You've been told [wrong thing], but here's the truth"
-• Side-by-side comparisons
-
-**Structure:**
-- Hook: "Stop doing ${topic} wrong"
-- Myth 1: [Common belief] ❌
-- Reality 1: [Truth] ✅
-- Myth 2: [Another misconception] ❌  
-- Reality 2: [Correction] ✅
-- CTA: "Share this before it's too late"
-- Duration: ${platformSpecs.duration}
-- Tone: ${tone} but authoritative
-
-Use controversial angles to drive comments and shares.`
-    ];
-
-    // Pick a random approach for variety
-    const selectedBetterApproach = betterApproaches[Math.floor(Math.random() * betterApproaches.length)];
 
     const better: PromptTier = {
       level: "better",
       title: "Better Prompt",
-      description: "Creative approach with strategy",
-      prompt: selectedBetterApproach,
+      description: "Strategic approach with depth",
+      prompt: typeof betterPrompt === "string" ? betterPrompt : betterPrompt[0],
     };
-
-    // EXPERT: Advanced multi-angle strategy
-    const expertPrompt = `Role: You are a viral ${platform} content strategist who has created 100+ videos with 1M+ views each about ${selectedCat} content.
-
-Task: Create a complete content strategy for "${topic}" with MULTIPLE creative angles.
-
-📱 Platform: ${platform} | Duration: ${platformSpecs.duration} | Format: ${platformSpecs.aspectRatio}
-
-🎯 GENERATE 3 DIFFERENT VIDEO CONCEPTS (Choose the best one to produce):
-
-**CONCEPT A: Emotional Storytelling**
-- Hook: Personal vulnerability or shocking statement
-- Arc: Problem → Struggle → Discovery → Transformation
-- Emotion: Make viewers FEEL something about ${topic}
-- Visual style: Intimate, close-ups, authentic moments
-- Best for: Building deep connection and saves
-
-**CONCEPT B: Entertainment-First Education**  
-- Hook: Humor, meme format, or trending audio
-- Arc: Setup joke → Deliver value → Callback to joke
-- Emotion: Make viewers LAUGH while learning about ${topic}
-- Visual style: Fast cuts, on-screen text, visual gags
-- Best for: Shares, going viral, broad appeal
-
-**CONCEPT C: Insider/Expert Reveal**
-- Hook: "Industry secret" or "What they don't tell you"
-- Arc: Controversy → Insider knowledge → Mind-blown moment
-- Emotion: Make viewers feel SMART and in-the-know
-- Visual style: Direct-to-camera, authority, receipts/proof
-- Best for: Authority building, comment debates, niche dominance
-
-🎬 PRODUCTION BLUEPRINT (for chosen concept):
-
-**SECOND-BY-SECOND BREAKDOWN:**
-0-3s: [Specific opening visual + exact line to say]
-3-8s: [Transition + what to show + what to say]
-8-15s: [Pattern interrupt moment - what happens]
-15-25s: [Main value delivery - key insight about ${topic}]
-25-35s: [Supporting example or proof point]
-35-45s: [Build to conclusion or plot twist]
-45-${platformSpecs.duration.split('-')[1]}: [CTA + memorable ending frame]
-
-**EDITING STRATEGY:**
-- Pacing: [Fast/Medium/Slow] with [X] cuts per 10 seconds
-- Music: [Genre/mood] that matches [specific emotion]
-- Text overlays: [When to use and what to emphasize]
-- Effects: [Specific transitions, zooms, or visual tricks]
-- B-roll: [What supplemental footage to show and when]
-
-**HOOK VARIATIONS (A/B test these):**
-1. Question format: "[Provocative question about ${topic}]?"
-2. Shock value: "I can't believe [surprising fact about ${topic}]"
-3. Relatability: "POV: You finally understand ${topic}"
-4. Controversy: "Unpopular opinion about ${topic}..."
-5. Urgency: "Stop [common mistake with ${topic}] immediately"
-
-**RETENTION MECHANICS:**
-- Pattern interrupt at: [specific timestamp] with [what happens]
-- Open loop: "[Tease something revealed later]"
-- Payoff: "[How to deliver on the promise]"
-- Rewatch trigger: "[Hidden detail or easter egg]"
-
-**ALGORITHM HACKS:**
-- Target watch time: ${platformSpecs.duration === "15-60 seconds" ? "45+" : "70+"} seconds (${platformSpecs.duration === "15-60 seconds" ? "75%" : "80%"}+ completion)
-- Comment bait: "[Question to ask in comments]"
-- Save trigger: "[Why this is save-worthy]"
-- Share angle: "[What makes this shareable]"
-- Series setup: "[How this could be Part 1 of X]"
-
-**CAPTION FORMULA:**
-Line 1: [Attention-grabbing hook - 5-8 words]
-Line 2-3: [Value proposition - what they'll learn]
-Line 4: [Call-to-action - what to do next]
-Hashtags: [5-7 strategic tags mixing viral + niche + branded]
-
-**COMPETITOR INTEL:**
-Study: [@suggested_creator_1] - [what they do well with ${topic}]
-Study: [@suggested_creator_2] - [their unique angle]
-Your unique differentiator: [How to stand out from competitors]
-
-**POST-UPLOAD STRATEGY:**
-- Thumbnail frame: [Which second provides best preview]
-- Best time to post: [Based on ${selectedCat} audience]
-- Engagement plan: [How to respond to comments for algorithm boost]
-- Follow-up video: [What to create next to build momentum]
-
-**RISK ASSESSMENT:**
-- Potential controversy: [What might trigger negative response]
-- Platform guidelines: [Anything to watch out for]
-- Audience alignment: [Does this fit your brand?]
-
-Tone: ${tone} | Content Strategy: Make it ${contentType} but entertaining
-Context: Optimized for ${selectedToolName}, mobile viewing, maximum virality
-
-🎯 SUCCESS METRICS TO TRACK:
-- Watch time % (goal: 70%+)
-- Engagement rate (goal: 5%+)  
-- Share rate (goal: 2%+)
-- Follower conversion (goal: 0.5%+)
-
-Choose ONE concept and execute it perfectly. Quality over quantity always wins.`;
 
     const expert: PromptTier = {
       level: "expert",
       title: "Expert Prompt",
-      description: "Multi-concept professional strategy",
-      prompt: expertPrompt,
+      description: "Professional multi-angle strategy",
+      prompt: typeof expertPrompt === "string" ? expertPrompt : expertPrompt[0],
     };
 
     setTieredPrompts([basic, better, expert]);
     setShowRefinement(false);
 
-    // Generate topic analysis
-    const analysis = analyzeTopicViability(topic, selectedCat, platform);
-    const seasonality = getSeasonalInsights(topic);
-    if (seasonality) {
-      analysis.seasonality = seasonality;
+    // Show topic analysis only for video content (for now)
+    if (selectedUseCase === "video-content") {
+      const platform = refinementPlatform || "TikTok/YouTube Shorts/Reels";
+      const analysis = analyzeTopicViability(topic, category, platform);
+      const seasonality = getSeasonalInsights(topic);
+      if (seasonality) {
+        analysis.seasonality = seasonality;
+      }
+      setTopicAnalysis(analysis);
+      setShowTopicAnalysis(true);
+    } else {
+      setShowTopicAnalysis(false);
     }
-    setTopicAnalysis(analysis);
-    setShowTopicAnalysis(true);
 
-    toast.success("✨ Generated 3 unique approaches!");
+    toast.success(`✨ Generated 3 ${useCase?.name || "unique"} prompts!`);
   };
 
   const handleCopyPrompt = (prompt: string, level: string) => {
@@ -600,19 +421,40 @@ Choose ONE concept and execute it perfectly. Quality over quantity always wins.`
             >
               {/* Clean Headline - ChatGPT style */}
               <h1 className="text-5xl md:text-7xl font-medium tracking-tight leading-tight">
-                Better AI prompts for your short-form videos
+                Beautiful prompts for anything you create
               </h1>
 
               {/* Short Subtext */}
               <p className="text-xl md:text-2xl text-muted-foreground/80 max-w-3xl mx-auto font-light leading-relaxed">
-                Built for TikTok, YouTube Shorts, and Reels creators. Turn your idea into 3 versions: Basic, Better, and Expert.
+                From videos to resumes, research papers to business plans. Just enter your topic and get 3 prompts: Basic, Better, and Expert.
               </p>
 
               {/* One Big Input Box */}
               <div className="max-w-3xl mx-auto mt-12">
                 <div className="space-y-8">
+                  {/* Use Case Selector */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {useCases.map((useCase) => (
+                      <button
+                        key={useCase.id}
+                        onClick={() => {
+                          setSelectedUseCase(useCase.id);
+                          setSelectedSubCategory("");
+                        }}
+                        className={`p-4 rounded-xl border-2 transition-all text-left hover:scale-105 ${
+                          selectedUseCase === useCase.id
+                            ? "border-primary bg-primary/10 shadow-md"
+                            : "border-border/50 bg-card/50 hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="text-3xl mb-2">{useCase.icon}</div>
+                        <div className="text-sm font-medium">{useCase.name}</div>
+                      </button>
+                    ))}
+                  </div>
+
                   <Textarea
-                    placeholder="Describe your video idea..."
+                    placeholder={`Enter your topic (e.g., ${useCases.find(u => u.id === selectedUseCase)?.examples[0] || "Your idea"})...`}
                     value={generationTopic}
                     onChange={(e) => {
                       setGenerationTopic(e.target.value);
@@ -637,27 +479,23 @@ Choose ONE concept and execute it perfectly. Quality over quantity always wins.`
 
                   {/* Beginner-Friendly Options */}
                   <div className="grid md:grid-cols-3 gap-4">
-                    {/* Purpose/Category Dropdown */}
+                    {/* Sub-Category Dropdown (context-aware) */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground/70">
-                        What's your video about?
+                        {selectedUseCase === "video-content" ? "What's your video about?" :
+                         selectedUseCase === "resume-cv" ? "Resume type?" :
+                         selectedUseCase === "academic-research" ? "Academic level?" :
+                         "Type/Category?"}
                       </label>
                       <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        value={selectedSubCategory}
+                        onChange={(e) => setSelectedSubCategory(e.target.value)}
                         className="w-full p-3 bg-card/50 border border-border/50 rounded-xl focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all text-base outline-none"
                       >
-                        <option value="all">Any topic</option>
-                        <option value="tutorial">Tutorial / How-to</option>
-                        <option value="education">Educational content</option>
-                        <option value="entertainment">Entertainment / Comedy</option>
-                        <option value="lifestyle">Lifestyle / Daily vlog</option>
-                        <option value="product-review">Product review</option>
-                        <option value="storytelling">Storytelling</option>
-                        <option value="motivation">Motivation / Inspiration</option>
-                        <option value="challenge">Challenge / Trend</option>
-                        <option value="behind-the-scenes">Behind the scenes</option>
-                        <option value="other">Other</option>
+                        <option value="">Any</option>
+                        {useCases.find(u => u.id === selectedUseCase)?.categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
                       </select>
                     </div>
 
