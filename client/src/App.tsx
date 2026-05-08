@@ -7,13 +7,15 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Browse from "./pages/Browse";
 import Community from "./pages/Community";
 import Home from "./pages/Home";
+import ChatHome from "./pages/ChatHome";
 import Library from "./pages/Library";
 import Settings from "./pages/Settings";
 
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/"} component={ChatHome} />
+      <Route path={"/old"} component={Home} />
       <Route path={"/browse"} component={Browse} />
       <Route path={"/library"} component={Library} />
       <Route path={"/community"} component={Community} />
