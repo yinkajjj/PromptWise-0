@@ -591,15 +591,15 @@ export default function Home() {
                         </div>
 
                         {/* Full-width grid layout - 50:50 split */}
-                        <div className="w-full max-w-[1600px] mx-auto px-4">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="w-full max-w-[2000px] mx-auto px-6">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                             {tieredPrompts.map((tier, idx) => (
                             <motion.div
                               key={tier.level}
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.1 }}
-                              className={`bg-card border-2 rounded-xl p-6 hover:shadow-lg transition-all flex flex-col ${
+                              className={`bg-card border-2 rounded-xl p-8 hover:shadow-lg transition-all flex flex-col ${
                                 tier.level === "expert"
                                   ? "border-primary/50 bg-primary/5" 
                                   : "border-border"
@@ -617,8 +617,8 @@ export default function Home() {
                               </div>
 
                               {/* Prompt content - scrollable */}
-                              <div className="bg-background/50 rounded-lg p-5 border flex-1 overflow-y-auto min-h-[400px] max-h-[600px] mb-4">
-                                <pre className="text-sm whitespace-pre-wrap font-mono leading-relaxed">
+                              <div className="bg-background/50 rounded-lg p-6 border flex-1 overflow-y-auto min-h-[600px] max-h-[800px] mb-4">
+                                <pre className="text-base whitespace-pre-wrap font-mono leading-relaxed">
                                   {tier.prompt}
                                 </pre>
                               </div>
