@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Trash2, RotateCcw, Copy, Download, Brain, Zap } from "lucide-react";
+import { Send, Sparkles, Trash2, RotateCcw, Copy, Download, Brain, Zap, Video } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import QuestionCard from "@/components/QuestionCard";
+import TrendAnalysisCard from "@/components/TrendAnalysisCard";
+import { ViralHooksDisplay, VideoScriptDisplay, ThumbnailIdeasDisplay } from "@/components/ContentIntelligenceDisplay";
 import { useCases } from "@/lib/useCases";
 import { generateUniversalPrompt } from "@/lib/universalPromptGenerator";
 import { researchTopic, enrichPromptWithContext } from "@/lib/topicResearcher";
@@ -15,12 +17,22 @@ import {
   type Question,
   type UserContext 
 } from "@/lib/aiAgents";
+import {
+  TrendAnalyzer,
+  ViralHookGenerator,
+  VideoScriptGenerator,
+  ThumbnailGenerator,
+  type TrendData,
+  type ViralHook,
+  type ScriptSection,
+  type ThumbnailIdea,
+} from "@/lib/contentIntelligence";
 import { toast } from "sonner";
 
 // Chat message types
 type Message = {
   id: string;
-  role: "user" | "assistant" | "system" | "questions" | "reasoning";
+  role: "user" | "assistant" | "system" | "questions" | "reasoning" | "content-intelligence";
   content: string;
   timestamp: Date;
   prompts?: GeneratedPrompt[];
@@ -29,6 +41,12 @@ type Message = {
     steps: string[];
     strategy: string;
     adaptations: string[];
+  };
+  contentIntelligence?: {
+    trend?: TrendData;
+    hooks?: ViralHook[];
+    script?: ScriptSection[];
+    thumbnails?: ThumbnailIdea[];
   };
 };
 
@@ -366,6 +384,48 @@ export default function ChatHome() {
         },
       ];
 
+      // 🎬 PHASE 3: Video Content Intelligence (for video-content use case)
+      if (context.useCase === "video-content") {
+        toast.info("🎬 Generating content intelligence...");
+
+        const platform = (context.answers.platform || context.answers.video_platform || "youtube").toLowerCase();
+        const platformType = platform.includes("tiktok") || platform.includes("short") ? "tiktok" : "youtube";
+
+        // Trend Analysis
+        const trendAnalyzer = new TrendAnalyzer();
+        const trend = trendAnalyzer.analyzeTrend(context.topic, platformType);
+
+        // Viral Hooks
+        const hookGenerator = new ViralHookGenerator();
+        const hooks = hookGenerator.generateHooks(context.topic, platformType, trend.audienceAge);
+
+        // Video Script
+        const scriptGenerator = new VideoScriptGenerator();
+        const duration = context.answers.video_length?.includes("60") ? "short" : 
+                        context.answers.video_length?.includes("10") ? "medium" : "medium";
+        const script = scriptGenerator.generateScript(context.topic, hooks[0].hook, duration, platformType);
+
+        // Thumbnail Ideas
+        const thumbnailGenerator = new ThumbnailGenerator();
+        const thumbnails = thumbnailGenerator.generateThumbnailIdeas(context.topic, hooks[0].hook, platformType);
+
+        // Add content intelligence message
+        const intelligenceMessage: Message = {
+          id: (Date.now() + 15).toString(),
+          role: "content-intelligence",
+          content: `🎬 **Content Intelligence Generated!**\n\nTrend analysis, viral hooks, video script, and thumbnail ideas ready!`,
+          timestamp: new Date(),
+          contentIntelligence: {
+            trend,
+            hooks,
+            script,
+            thumbnails,
+          },
+        };
+
+        setMessages(prev => [...prev, intelligenceMessage]);
+      }
+
       // Add assistant message with prompts
       const assistantMessage: Message = {
         id: (Date.now() + 20).toString(),
@@ -581,6 +641,35 @@ export default function ChatHome() {
                           </div>
                         )}
                       </div>
+                    </div>
+                  )}
+
+                  {/* 🎬 PHASE 3: Content Intelligence Display */}
+                  {message.contentIntelligence && (
+                    <div className="mt-4 space-y-6">
+                      {/* Trend Analysis */}
+                      {message.contentIntelligence.trend && (
+                        <TrendAnalysisCard trend={message.contentIntelligence.trend} />
+                      )}
+
+                      {/* Viral Hooks and Script */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {message.contentIntelligence.hooks && (
+                          <ViralHooksDisplay hooks={message.contentIntelligence.hooks} />
+                        )}
+
+                        {message.contentIntelligence.script && (
+                          <VideoScriptDisplay 
+                            script={message.contentIntelligence.script}
+                            topic={message.contentIntelligence.trend?.keyword || "your topic"}
+                          />
+                        )}
+                      </div>
+
+                      {/* Thumbnail Ideas */}
+                      {message.contentIntelligence.thumbnails && (
+                        <ThumbnailIdeasDisplay thumbnails={message.contentIntelligence.thumbnails} />
+                      )}
                     </div>
                   )}
 

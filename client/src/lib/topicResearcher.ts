@@ -136,7 +136,7 @@ function extractEntities(text: string): string[] {
     if (decades) entities.push(...decades);
   }
 
-  return [...new Set(entities)];
+  return Array.from(new Set(entities));
 }
 
 function identifyDomain(text: string, useCase: string): string {
@@ -259,7 +259,7 @@ function getRelatedConcepts(text: string, domain: string): string[] {
     concepts.push("social dynamics", "community engagement", "collective action", "social capital");
   }
 
-  return [...new Set(concepts)].slice(0, 6);
+  return Array.from(new Set(concepts)).slice(0, 6);
 }
 
 function generateResearchAngles(topic: string, domain: string, useCase: string): string[] {
@@ -381,7 +381,8 @@ function generateResearchAngles(topic: string, domain: string, useCase: string):
   }
 
   // Combine and ensure uniqueness
-  return [...new Set([...selectedAngles, ...contextAngles])].slice(0, 5);
+  const combinedAngles = selectedAngles.concat(contextAngles);
+  return Array.from(new Set(combinedAngles)).slice(0, 5);
 }
 
 // Helper: Get random items from array

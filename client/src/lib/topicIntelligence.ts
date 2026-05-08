@@ -176,7 +176,7 @@ export function analyzeTopicViability(
     recommendations,
     uniqueAngles,
     warnings,
-    bestPlatforms: [...new Set(bestPlatforms)],
+    bestPlatforms: Array.from(new Set(bestPlatforms)),
     estimatedViews,
   };
 }
