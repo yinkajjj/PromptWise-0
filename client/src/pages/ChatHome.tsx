@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import QuestionCard from "@/components/QuestionCard";
 import TrendAnalysisCard from "@/components/TrendAnalysisCard";
+import AgentStagesDisplay from "@/components/AgentStagesDisplay";
 import { ViralHooksDisplay, VideoScriptDisplay, ThumbnailIdeasDisplay } from "@/components/ContentIntelligenceDisplay";
 import { useCases } from "@/lib/useCases";
 import { generateUniversalPrompt } from "@/lib/universalPromptGenerator";
@@ -27,12 +28,13 @@ import {
   type ScriptSection,
   type ThumbnailIdea,
 } from "@/lib/contentIntelligence";
+import { AgenticWorkflow, type AgentStage } from "@/lib/agenticWorkflow";
 import { toast } from "sonner";
 
 // Chat message types
 type Message = {
   id: string;
-  role: "user" | "assistant" | "system" | "questions" | "reasoning" | "content-intelligence";
+  role: "user" | "assistant" | "system" | "questions" | "reasoning" | "content-intelligence" | "agent-stages";
   content: string;
   timestamp: Date;
   prompts?: GeneratedPrompt[];
@@ -47,6 +49,12 @@ type Message = {
     hooks?: ViralHook[];
     script?: ScriptSection[];
     thumbnails?: ThumbnailIdea[];
+  };
+  agentStages?: AgentStage[];
+  workflowInsights?: {
+    retrievedKnowledge: any[];
+    strategicRecommendations: string[];
+    optimizations: string[];
   };
 };
 
@@ -81,6 +89,7 @@ export default function ChatHome() {
   const [selectedUseCase, setSelectedUseCase] = useState<string>("video-content");
   const [currentUserContext, setCurrentUserContext] = useState<UserContext | null>(null);
   const [pendingAnswers, setPendingAnswers] = useState<Record<string, any>>({});
+  const [liveAgentStages, setLiveAgentStages] = useState<AgentStage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -313,76 +322,64 @@ export default function ChatHome() {
 
   const generatePromptsWithReasoning = async (context: UserContext) => {
     try {
-      // Agent 2: Context Analyzer
-      const analyzerAgent = new ContextAnalyzerAgent();
-      const analysis = analyzerAgent.analyze(context);
+      // 🚀 PHASE 4: 6-Agent Agentic Workflow
+      toast.info("🤖 Launching 6-agent intelligence system...");
 
-      // Agent 3: Reasoning Pipeline
-      const reasoningPipeline = new ReasoningPipeline();
-      const reasoning = await reasoningPipeline.reason(context, analysis);
+      // Initialize workflow
+      const workflow = new AgenticWorkflow();
 
-      // Show reasoning to user
-      const reasoningMessage: Message = {
+      // Show agent stages message placeholder
+      const stagesMessageId = (Date.now() + 5).toString();
+      const stagesMessage: Message = {
+        id: stagesMessageId,
+        role: "agent-stages",
+        content: "🔄 **6-Agent Intelligence Pipeline Active**",
+        timestamp: new Date(),
+        agentStages: [],
+      };
+      setMessages(prev => [...prev, stagesMessage]);
+
+      // Execute workflow with live stage updates
+      const result = await workflow.execute(context, (stage: AgentStage) => {
+        setLiveAgentStages(prev => {
+          const updated = [...prev];
+          const index = updated.findIndex(s => s.stage === stage.stage);
+          if (index >= 0) {
+            updated[index] = stage;
+          } else {
+            updated.push(stage);
+          }
+          return updated;
+        });
+
+        // Update message with current stages
+        setMessages(prev => prev.map(msg => 
+          msg.id === stagesMessageId 
+            ? { ...msg, agentStages: workflow.getStages() }
+            : msg
+        ));
+      });
+
+      // Clear live stages
+      setLiveAgentStages([]);
+
+      // Show final insights
+      const insightsMessage: Message = {
         id: (Date.now() + 10).toString(),
         role: "reasoning",
-        content: `🧠 **AI Reasoning Process:**\n\n${reasoning.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
+        content: `💡 **Strategic Insights:**\n\n${result.finalOutput.insights.strategicRecommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}`,
         timestamp: new Date(),
-        reasoning,
+        workflowInsights: result.finalOutput.insights,
       };
-      setMessages(prev => [...prev, reasoningMessage]);
+      setMessages(prev => [...prev, insightsMessage]);
 
-      // Research topic
-      toast.info("🔍 Researching your topic...");
-      const topicContext = researchTopic(context.topic, context.useCase);
-
-      // Determine tone from context or answers
-      const tone = context.answers.tone || 
-                   analysis.enrichedContext.suggestedTone || 
-                   "Professional";
-
-      // Generate Better and Expert prompts
-      const betterPrompt = generateUniversalPrompt(
-        context.useCase, 
-        "better", 
-        context.topic, 
-        "General", 
-        tone
-      );
-      const expertPrompt = generateUniversalPrompt(
-        context.useCase, 
-        "expert", 
-        context.topic, 
-        "General", 
-        tone
-      );
-
-      // Enrich with context
-      const enrichedBetter = enrichPromptWithContext(
-        typeof betterPrompt === "string" ? betterPrompt : betterPrompt[0],
-        topicContext,
-        "better"
-      );
-
-      const enrichedExpert = enrichPromptWithContext(
-        typeof expertPrompt === "string" ? expertPrompt : expertPrompt[0],
-        topicContext,
-        "expert"
-      );
-
-      const generatedPrompts: GeneratedPrompt[] = [
-        {
-          level: "better",
-          title: "Strategic Prompt",
-          description: "Context-aware approach",
-          prompt: enrichedBetter,
-        },
-        {
-          level: "expert",
-          title: "Expert Prompt",
-          description: "Research-powered strategy",
-          prompt: enrichedExpert,
-        },
-      ];
+      // Format prompts for display
+      const generatedPrompts: GeneratedPrompt[] = result.finalOutput.prompts.map(p => ({
+        level: p.level,
+        title: p.title,
+        description: `${p.reasoning}\n\n**Why This Works:**\n${p.strategicContext}\n\n**When to Use:**\n${p.whenToUse}`,
+        prompt: p.prompt,
+      }));
 
       // 🎬 PHASE 3: Video Content Intelligence (for video-content use case)
       if (context.useCase === "video-content") {
@@ -430,13 +427,13 @@ export default function ChatHome() {
       const assistantMessage: Message = {
         id: (Date.now() + 20).toString(),
         role: "assistant",
-        content: `✨ Generated 2 AI-optimized prompts using multi-agent reasoning!\n\nStrategy: ${reasoning.strategy}\n\nChoose the one that fits your needs best:`,
+        content: `✨ **6-Agent Intelligence Complete!**\n\nGenerated 2 deeply analyzed prompts with RAG-powered knowledge and personalized adaptations.\n\nChoose the one that fits your needs best:`,
         timestamp: new Date(),
         prompts: generatedPrompts,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      toast.success("✅ Prompts generated with AI reasoning!");
+      toast.success("✅ Deep intelligence generation complete!");
 
       // Clear pending state
       setCurrentUserContext(null);
@@ -671,6 +668,11 @@ export default function ChatHome() {
                         <ThumbnailIdeasDisplay thumbnails={message.contentIntelligence.thumbnails} />
                       )}
                     </div>
+                  )}
+
+                  {/* 🤖 PHASE 4: Agent Stages Display */}
+                  {message.agentStages && message.agentStages.length > 0 && (
+                    <AgentStagesDisplay stages={message.agentStages} />
                   )}
 
                   {/* Timestamp */}
