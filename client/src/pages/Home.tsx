@@ -411,103 +411,86 @@ export default function Home() {
 
       <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-16'}`}>
         {/* Hero Section */}
-        <section className="container py-20 md:py-32">
-          <div className="text-center max-w-4xl mx-auto">
+        <section className="container py-12 md:py-16">
+          <div className="max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              {/* Clean Headline - ChatGPT style */}
-              <h1 className="text-5xl md:text-7xl font-medium tracking-tight leading-tight">
+              {/* Compact Header */}
+              <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-center">
                 Beautiful prompts for anything you create
               </h1>
 
-              {/* Short Subtext */}
-              <p className="text-xl md:text-2xl text-muted-foreground/80 max-w-3xl mx-auto font-light leading-relaxed">
-                From videos to resumes, research papers to business plans. Just enter your topic and get 3 prompts: Basic, Better, and Expert.
-              </p>
+              {/* Compact Input Area */}
+              <div className="max-w-4xl mx-auto space-y-4">
+                {/* Horizontal Scrollable Use Case Selector */}
+                <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                  {useCases.map((useCase) => (
+                    <button
+                      key={useCase.id}
+                      onClick={() => {
+                        setSelectedUseCase(useCase.id);
+                        setSelectedSubCategory("");
+                      }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all whitespace-nowrap hover:scale-105 flex-shrink-0 ${
+                        selectedUseCase === useCase.id
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border/50 bg-card/50 hover:border-primary/50"
+                      }`}
+                    >
+                      <span className="text-xl">{useCase.icon}</span>
+                      <span className="text-sm font-medium">{useCase.name}</span>
+                    </button>
+                  ))}
+                </div>
 
-              {/* One Big Input Box */}
-              <div className="max-w-3xl mx-auto mt-12">
-                <div className="space-y-8">
-                  {/* Use Case Selector */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {useCases.map((useCase) => (
-                      <button
-                        key={useCase.id}
-                        onClick={() => {
-                          setSelectedUseCase(useCase.id);
-                          setSelectedSubCategory("");
-                        }}
-                        className={`p-4 rounded-xl border-2 transition-all text-left hover:scale-105 ${
-                          selectedUseCase === useCase.id
-                            ? "border-primary bg-primary/10 shadow-md"
-                            : "border-border/50 bg-card/50 hover:border-primary/50"
-                        }`}
-                      >
-                        <div className="text-3xl mb-2">{useCase.icon}</div>
-                        <div className="text-sm font-medium">{useCase.name}</div>
-                      </button>
-                    ))}
-                  </div>
+                {/* Single Large Input */}
+                <Textarea
+                  placeholder={`💡 ${useCases.find(u => u.id === selectedUseCase)?.examples[0] || "Enter your topic"}...`}
+                      value={generationTopic}
+                      onChange={(e) => {
+                        setGenerationTopic(e.target.value);
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        const lineHeight = 22;
+                        const maxHeight = lineHeight * 3;
+                        const newHeight = Math.min(target.scrollHeight, maxHeight);
+                        target.style.height = `${newHeight}px`;
+                      }}
+                      onKeyDown={(e) => {
+                        const isComposing = (e.nativeEvent as any).isComposing;
+                        if (e.key === "Enter" && !e.shiftKey && !isComposing) {
+                          e.preventDefault();
+                          handleGenerate();
+                        }
+                      }}
+                      rows={1}
+                      className="text-base resize-none overflow-y-auto bg-card/50 border-2 border-border/50 focus:border-primary/60 transition-all rounded-xl px-5 py-3"
+                      style={{ minHeight: '54px', maxHeight: '80px' }}
+                    />
 
-                  <Textarea
-                    placeholder={`Enter your topic (e.g., ${useCases.find(u => u.id === selectedUseCase)?.examples[0] || "Your idea"})...`}
-                    value={generationTopic}
-                    onChange={(e) => {
-                      setGenerationTopic(e.target.value);
-                      const target = e.target as HTMLTextAreaElement;
-                      target.style.height = 'auto';
-                      const lineHeight = 24;
-                      const maxHeight = lineHeight * 5;
-                      const newHeight = Math.min(target.scrollHeight, maxHeight);
-                      target.style.height = `${newHeight}px`;
-                    }}
-                    onKeyDown={(e) => {
-                      const isComposing = (e.nativeEvent as any).isComposing;
-                      if (e.key === "Enter" && !e.shiftKey && !isComposing) {
-                        e.preventDefault();
-                        handleGenerate();
-                      }
-                    }}
-                    rows={2}
-                    className="text-lg resize-none overflow-y-auto bg-card/50 border-2 border-border/50 focus:border-primary/60 transition-all rounded-2xl px-6 py-4 shadow-sm focus:shadow-md"
-                    style={{ minHeight: '80px', maxHeight: '120px' }}
-                  />
-
-                  {/* Beginner-Friendly Options */}
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {/* Sub-Category Dropdown (context-aware) */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground/70">
-                        {selectedUseCase === "video-content" ? "What's your video about?" :
-                         selectedUseCase === "resume-cv" ? "Resume type?" :
-                         selectedUseCase === "academic-research" ? "Academic level?" :
-                         "Type/Category?"}
-                      </label>
+                    {/* Inline Controls */}
+                    <div className="flex flex-wrap gap-3 items-center">
+                      {/* Sub-Category */}
                       <select
                         value={selectedSubCategory}
                         onChange={(e) => setSelectedSubCategory(e.target.value)}
-                        className="w-full p-3 bg-card/50 border border-border/50 rounded-xl focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all text-base outline-none"
+                        className="px-4 py-2.5 bg-card/50 border border-border/50 rounded-lg text-sm focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                       >
-                        <option value="">Any</option>
+                        <option value="">Any type</option>
                         {useCases.find(u => u.id === selectedUseCase)?.categories.map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
-                    </div>
 
-                    {/* Tone Dropdown */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground/70">
-                        What tone do you want?
-                      </label>
+                      {/* Tone */}
                       <select
                         value={selectedTone}
                         onChange={(e) => setSelectedTone(e.target.value)}
-                        className="w-full p-3 bg-card/50 border border-border/50 rounded-xl focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all text-base outline-none"
+                        className="px-4 py-2.5 bg-card/50 border border-border/50 rounded-lg text-sm focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                       >
                         <option value="All Tones">Any tone</option>
                         <option value="Professional">Professional</option>
@@ -516,41 +499,30 @@ export default function Home() {
                         <option value="Confident">Confident</option>
                         <option value="Creative">Creative</option>
                       </select>
-                    </div>
 
-                    {/* AI Tool Dropdown */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground/70">
-                        Which AI tool will you use?
-                      </label>
+                      {/* AI Tool */}
                       <select
                         value={selectedTool}
                         onChange={(e) => setSelectedTool(e.target.value)}
-                        className="w-full p-3 bg-card/50 border border-border/50 rounded-xl focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all text-base outline-none"
+                        className="px-4 py-2.5 bg-card/50 border border-border/50 rounded-lg text-sm focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                       >
-                        <option value="all">All tools</option>
+                        <option value="all">All AI tools</option>
                         <option value="chatgpt">ChatGPT</option>
                         <option value="claude">Claude</option>
                         <option value="gemini">Gemini</option>
                         <option value="copilot">Copilot</option>
-                        <option value="midjourney">Midjourney</option>
-                        <option value="dalle">DALL-E</option>
-                        <option value="not-sure">Not sure</option>
                       </select>
-                    </div>
-                  </div>
 
-                  {/* One Main Button */}
-                  <div className="flex justify-center">
-                    <Button 
-                      onClick={handleGenerate} 
-                      disabled={isGenerating} 
-                      size="lg"
-                      className="w-full md:w-auto px-12 py-6 text-lg rounded-xl hover:scale-[1.02] transition-all shadow-lg hover:shadow-xl"
-                    >
-                      {isGenerating ? "Generating..." : showRefinement ? "Generate My Prompts" : "Generate Prompt"}
-                    </Button>
-                  </div>
+                      {/* Generate Button */}
+                      <Button 
+                        onClick={handleGenerate} 
+                        disabled={isGenerating} 
+                        size="lg"
+                        className="ml-auto px-8 py-2.5 rounded-lg hover:scale-105 transition-all shadow-md"
+                      >
+                        {isGenerating ? "Generating..." : "Generate"}
+                      </Button>
+                    </div>
 
                   {/* Refinement Questions - Show after first click */}
                   <AnimatePresence>
@@ -797,7 +769,7 @@ export default function Home() {
                         </div>
 
                         {/* Helpful tip */}
-                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-center max-w-2xl mx-auto">
+                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-center max-w-2xl mx-auto mt-6">
                           <p className="text-sm">
                             <strong>💡 Pro Tip:</strong> The Expert Prompt works best for detailed, high-quality content. 
                             The Basic Prompt is great for quick ideas. Try different versions to see what your AI tool produces!
@@ -807,13 +779,11 @@ export default function Home() {
                     )}
                   </AnimatePresence>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-
+              </motion.div>
+            </div>
           </section>
 
-          {/* Generated Prompts Section */}
+        {/* Generated Prompts Section */}
         {(activeJobId || generatedPrompts.length > 0) && (
           <section className="container py-16" data-section="generated-prompts">
             <div className="flex items-center justify-between mb-8">
