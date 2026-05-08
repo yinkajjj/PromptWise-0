@@ -237,10 +237,10 @@ export default function ChatHome() {
       // Parse intent
       const intent = parseUserIntent(userMessage);
 
-      // Update memory
+      // Update memory with selected use case
       setMemory(prev => ({
         topics: [...prev.topics, intent.topic].slice(-10),
-        useCases: [...prev.useCases, intent.useCase].slice(-5),
+        useCases: [...prev.useCases, selectedUseCase].slice(-5), // Track selected use case
         preferences: {
           ...prev.preferences,
           tone: intent.tone,
@@ -266,10 +266,10 @@ export default function ChatHome() {
       // 🤖 PHASE 2: Multi-Agent AI System
       toast.info("🧠 AI agents analyzing your request...");
 
-      // Create user context
+      // Create user context - USE SELECTED USE CASE, not detected one!
       const userContext: UserContext = {
         topic: intent.topic,
-        useCase: intent.useCase,
+        useCase: selectedUseCase, // Use the button selection instead of auto-detection
         answers: {},
       };
 
