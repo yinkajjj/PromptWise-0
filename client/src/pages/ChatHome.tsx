@@ -270,7 +270,7 @@ export default function ChatHome() {
   };
 
   const handleClear = () => {
-    if (confirm("Clear all conversation history?")) {
+    if (confirm("Start a new chat? This will clear your current conversation.")) {
       setMessages([{
         id: "welcome",
         role: "system",
@@ -282,7 +282,7 @@ export default function ChatHome() {
         useCases: [],
         preferences: {},
       });
-      toast.success("Conversation cleared");
+      toast.success("New chat started");
     }
   };
 
@@ -320,8 +320,9 @@ export default function ChatHome() {
                 {memory.topics.length} topics
               </Badge>
             )}
-            <Button variant="ghost" size="icon" onClick={handleClear} title="Clear conversation">
-              <Trash2 className="h-4 w-4" />
+            <Button variant="default" size="sm" onClick={handleClear} className="gap-2">
+              <RotateCcw className="h-4 w-4" />
+              New Chat
             </Button>
           </div>
         </div>
