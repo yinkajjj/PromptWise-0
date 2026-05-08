@@ -87,66 +87,8 @@ export default function Home() {
       return;
     }
 
-    // Show refinement questions first (intelligent flow)
-    if (!showRefinement && tieredPrompts.length === 0) {
-      setShowRefinement(true);
-      return;
-    }
-
-    // If refinement is shown, generate 3-tier prompts
-    if (showRefinement) {
-      generate3TierPrompts(topic);
-      return;
-    }
-
-    // Save to history
-    saveToHistory(topic);
-
-    try {
-      setIsGenerating(true);
-      setGeneratedPrompts([]); // Clear previous results
-
-      // Popular AI tools: ChatGPT, Claude, Midjourney, Runway, Gemini, DALL-E
-      const toolsForGeneration = selectedTool === "all" 
-        ? ["chatgpt", "claude", "midjourney", "runway", "gemini", "dalle"] 
-        : [selectedTool];
-      const tonesForGeneration = selectedTone === "All Tones"
-        ? ["professional", "conversational", "creative"]
-        : [selectedTone.toLowerCase()];
-
-      const response = await fetch("/api/prompts/jobs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          topic,
-          count: generationCount,
-          chunkSize: Math.min(generationCount, 50),
-          tools: toolsForGeneration,
-          tones: tonesForGeneration,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.detail || data?.error || "Generation failed");
-      }
-
-      setGeneratedPrompts([]);
-      setActiveJobId(String(data.jobId));
-      setJobStatus(String(data.status || "queued"));
-      setJobProgress(0);
-      setJobGeneratedCount(0);
-      setJobTotalCount(Number(data.totalCount || generationCount));
-      toast.success("Generation started! Watch the progress below.");
-    } catch (error: any) {
-      console.error("Generation error:", error);
-      toast.error(String(error?.message || "Failed to generate prompts"));
-    } finally {
-      // Generation button is released after job submission; progress is tracked by polling.
-      setIsGenerating(false);
-    }
+    // Skip old refinement flow - go straight to 3-tier intelligent generation
+    generate3TierPrompts(topic);
   };
 
   const generate3TierPrompts = (topic: string) => {
