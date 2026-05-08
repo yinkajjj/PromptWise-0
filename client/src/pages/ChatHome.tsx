@@ -90,8 +90,11 @@ export default function ChatHome() {
   const [currentUserContext, setCurrentUserContext] = useState<UserContext | null>(null);
   const [pendingAnswers, setPendingAnswers] = useState<Record<string, any>>({});
   const [liveAgentStages, setLiveAgentStages] = useState<AgentStage[]>([]);
+  const [lastMessageCount, setLastMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastAssistantMessageRef = useRef<HTMLDivElement>(null);
+  const firstNewMessageRef = useRef<HTMLDivElement>(null);
 
   // Load memory from localStorage on mount
   useEffect(() => {
@@ -128,10 +131,24 @@ export default function ChatHome() {
     localStorage.setItem("promptwise_messages", JSON.stringify(messages));
   }, [messages]);
 
-  // Auto-scroll to bottom
+  // Smart auto-scroll: scroll to first new message when content is generated
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // If messages were just added and we're done generating
+    if (!isGenerating && messages.length > lastMessageCount && firstNewMessageRef.current) {
+      // Scroll to the first NEW message (where results start)
+      setTimeout(() => {
+        firstNewMessageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } else if (isGenerating && lastAssistantMessageRef.current) {
+      // While generating, keep scrolling to show progress
+      lastAssistantMessageRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // Update last message count
+    if (!isGenerating && messages.length !== lastMessageCount) {
+      setLastMessageCount(messages.length);
+    }
+  }, [messages, isGenerating]);
 
   // Smart system prompt builder
   const buildSystemContext = (): string => {
@@ -510,27 +527,37 @@ export default function ChatHome() {
       <div className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-6 max-w-7xl">
           <AnimatePresence>
-            {messages.map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={`mb-6 flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div className={`max-w-[95%] ${message.role === "user" ? "ml-auto" : "mr-auto"}`}>
-                  {/* Message bubble */}
-                  <div
-                    className={`rounded-2xl px-5 py-4 ${
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : message.role === "system"
-                        ? "bg-muted/50 text-muted-foreground border border-border"
-                        : "bg-card border border-border"
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {message.content}
+            {messages.map((message, index) => {
+              // Check if this is the first new message after user input
+              const isFirstNewMessage = index === lastMessageCount && !isGenerating;
+
+              // Check if this is the latest assistant/system message for scroll targeting during generation
+              const isLatestAssistant = 
+                (message.role === "assistant" || message.role === "agent-stages" || message.role === "reasoning" || message.role === "content-intelligence") &&
+                index === messages.length - 1;
+
+              return (
+                <motion.div
+                  key={message.id}
+                  ref={isFirstNewMessage ? firstNewMessageRef : isLatestAssistant ? lastAssistantMessageRef : null}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className={`mb-6 flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div className={`max-w-[95%] ${message.role === "user" ? "ml-auto" : "mr-auto"}`}>
+                    {/* Message bubble */}
+                    <div
+                      className={`rounded-2xl px-5 py-4 ${
+                        message.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : message.role === "system"
+                          ? "bg-muted/50 text-muted-foreground border border-border"
+                          : "bg-card border border-border"
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {message.content}
                     </div>
                   </div>
 
@@ -681,7 +708,8 @@ export default function ChatHome() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            );
+            })}
           </AnimatePresence>
 
           {/* Typing indicator */}
