@@ -263,46 +263,136 @@ function getRelatedConcepts(text: string, domain: string): string[] {
 }
 
 function generateResearchAngles(topic: string, domain: string, useCase: string): string[] {
-  const angles: string[] = [];
   const topicLower = topic.toLowerCase();
 
-  // Academic research angles
+  // MASSIVE pool of research angles - randomly select 5 each time
+  const academicAnglesPool = [
+    "Historical genesis and evolutionary trajectory",
+    "Comparative cross-cultural analysis",
+    "Critical discourse analysis and power dynamics",
+    "Ethnographic field study approach",
+    "Quantitative impact measurement framework",
+    "Grounded theory and emergent themes",
+    "Case study: Deep-dive into specific instances",
+    "Longitudinal trend analysis over decades",
+    "Intersectional feminist perspective",
+    "Post-colonial and decolonial lens",
+    "Network analysis of key actors and institutions",
+    "Policy impact evaluation framework",
+    "Phenomenological lived experience study",
+    "Mixed-methods triangulation strategy",
+    "Action research and participatory design",
+    "Meta-analysis of existing literature",
+    "Systemic and ecological systems approach",
+    "Critical race theory application",
+    "Economic cost-benefit analysis",
+    "Philosophical and ethical implications",
+    "Technological affordances and constraints",
+    "Rhetorical analysis of public discourse",
+    "Archival research and historical documents",
+    "Counter-narratives and marginalized voices",
+    "Future scenario planning and forecasting",
+    "Interdisciplinary synthesis approach",
+    "Global South perspectives and epistemologies",
+    "Innovative methodological experimentation",
+    "Digital humanities computational methods",
+    "Environmental justice framework"
+  ];
+
+  const businessAnglesPool = [
+    "Blue ocean strategy and untapped markets",
+    "Competitive landscape SWOT analysis",
+    "Customer journey mapping and pain points",
+    "Disruptive innovation potential assessment",
+    "Ecosystem partnership opportunities",
+    "Go-to-market strategy and channels",
+    "Key performance indicators dashboard",
+    "Lean startup validation experiments",
+    "Market segmentation and targeting",
+    "Porter's Five Forces competitive analysis",
+    "Revenue model optimization",
+    "Scalability and growth hacking tactics",
+    "Stakeholder value proposition canvas",
+    "Technology adoption lifecycle positioning",
+    "Unit economics and profitability drivers"
+  ];
+
+  const contentAnglesPool = [
+    "Origin story and founding myths",
+    "Turning points and watershed moments",
+    "Unexpected connections and hidden influences",
+    "Contrarian takes and controversial debates",
+    "Behind-the-scenes insider perspectives",
+    "Failed attempts and lessons learned",
+    "Emerging trends and weak signals",
+    "Data-driven deep dive with visualizations",
+    "Expert roundtable diverse viewpoints",
+    "Beginner's mind fresh perspective",
+    "Local vs global tensions",
+    "Generational shifts and age cohort differences",
+    "Technology's double-edged impact",
+    "Economic winners and losers analysis",
+    "Cultural appropriation vs appreciation debate"
+  ];
+
+  let selectedAngles: string[] = [];
+
+  // Pick angles based on use case with RANDOMIZATION
   if (useCase === "academic-research") {
-    angles.push("Historical evolution and key milestones");
-    angles.push("Comparative analysis with similar phenomena");
-    angles.push("Socio-cultural impact and implications");
-    angles.push("Methodological approaches and frameworks");
-    angles.push("Future trajectories and emerging trends");
+    selectedAngles = getRandomItems(academicAnglesPool, 5);
+  } else if (useCase === "business-writing") {
+    selectedAngles = getRandomItems(businessAnglesPool, 4);
+  } else if (useCase === "video-content") {
+    selectedAngles = getRandomItems(contentAnglesPool, 5);
+  } else {
+    // Mix for other use cases
+    selectedAngles = [
+      ...getRandomItems(academicAnglesPool, 2),
+      ...getRandomItems(businessAnglesPool, 1),
+      ...getRandomItems(contentAnglesPool, 2)
+    ];
   }
 
-  // Business angles
-  if (useCase === "business-writing") {
-    angles.push("Market dynamics and opportunity analysis");
-    angles.push("Stakeholder perspectives and interests");
-    angles.push("Risk assessment and mitigation strategies");
-    angles.push("Implementation roadmap and success metrics");
-  }
+  // Add context-specific angles based on topic keywords
+  const contextAngles: string[] = [];
 
-  // Content-specific angles
   if (/rise|growth|emergence/i.test(topicLower)) {
-    angles.push("Catalysts and driving forces");
-    angles.push("Key actors and institutional support");
-    angles.push("Barriers overcome and challenges remaining");
+    contextAngles.push(getRandomItem([
+      "Catalysts and accelerating forces",
+      "Grassroots movements vs institutional drivers",
+      "Tipping points and critical mass dynamics"
+    ]));
   }
 
   if (/impact|effect|influence/i.test(topicLower)) {
-    angles.push("Direct and indirect consequences");
-    angles.push("Short-term vs long-term effects");
-    angles.push("Intended and unintended outcomes");
+    contextAngles.push(getRandomItem([
+      "Ripple effects across interconnected systems",
+      "Unintended consequences and blind spots",
+      "Measurement challenges and proxy indicators"
+    ]));
   }
 
   if (/future|trend|forecast/i.test(topicLower)) {
-    angles.push("Scenario analysis (best/worst/likely cases)");
-    angles.push("Disruptive factors and wild cards");
-    angles.push("Strategic implications and recommendations");
+    contextAngles.push(getRandomItem([
+      "Wild card scenarios and black swan events",
+      "Weak signals indicating paradigm shifts",
+      "Backlash and counter-trend analysis"
+    ]));
   }
 
-  return [...new Set(angles)].slice(0, 5);
+  // Combine and ensure uniqueness
+  return [...new Set([...selectedAngles, ...contextAngles])].slice(0, 5);
+}
+
+// Helper: Get random items from array
+function getRandomItems<T>(arr: T[], count: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, arr.length));
+}
+
+// Helper: Get single random item
+function getRandomItem<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /**
