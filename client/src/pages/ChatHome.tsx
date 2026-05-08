@@ -1,21 +1,35 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Sparkles, Trash2, RotateCcw, Copy, Download } from "lucide-react";
+import { Send, Sparkles, Trash2, RotateCcw, Copy, Download, Brain, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import QuestionCard from "@/components/QuestionCard";
 import { useCases } from "@/lib/useCases";
 import { generateUniversalPrompt } from "@/lib/universalPromptGenerator";
 import { researchTopic, enrichPromptWithContext } from "@/lib/topicResearcher";
+import { 
+  QuestionGeneratorAgent, 
+  ContextAnalyzerAgent, 
+  ReasoningPipeline,
+  type Question,
+  type UserContext 
+} from "@/lib/aiAgents";
 import { toast } from "sonner";
 
 // Chat message types
 type Message = {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "questions" | "reasoning";
   content: string;
   timestamp: Date;
   prompts?: GeneratedPrompt[];
+  questions?: Question[];
+  reasoning?: {
+    steps: string[];
+    strategy: string;
+    adaptations: string[];
+  };
 };
 
 type GeneratedPrompt = {
@@ -47,6 +61,8 @@ export default function ChatHome() {
     preferences: {},
   });
   const [selectedUseCase, setSelectedUseCase] = useState<string>("video-content");
+  const [currentUserContext, setCurrentUserContext] = useState<UserContext | null>(null);
+  const [pendingAnswers, setPendingAnswers] = useState<Record<string, any>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -179,7 +195,7 @@ export default function ChatHome() {
 
       // Update memory
       setMemory(prev => ({
-        topics: [...prev.topics, intent.topic].slice(-10), // Keep last 10
+        topics: [...prev.topics, intent.topic].slice(-10),
         useCases: [...prev.useCases, intent.useCase].slice(-5),
         preferences: {
           ...prev.preferences,
@@ -203,15 +219,124 @@ export default function ChatHome() {
         return;
       }
 
-      // Generate prompts
-      toast.info("🔍 Researching your topic...");
+      // 🤖 PHASE 2: Multi-Agent AI System
+      toast.info("🧠 AI agents analyzing your request...");
+
+      // Create user context
+      const userContext: UserContext = {
+        topic: intent.topic,
+        useCase: intent.useCase,
+        answers: {},
+      };
+
+      // Agent 1: Question Generator
+      const questionAgent = new QuestionGeneratorAgent();
+      const questions = questionAgent.analyze(userContext);
+
+      if (questions.length > 0) {
+        // Ask questions first
+        setCurrentUserContext(userContext);
+        setPendingAnswers({});
+
+        const questionsMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "questions",
+          content: `🤔 To generate the perfect prompts, I need to understand your needs better. Please answer these questions:`,
+          timestamp: new Date(),
+          questions,
+        };
+
+        setMessages(prev => [...prev, questionsMessage]);
+        setIsGenerating(false);
+        toast.success("Questions ready!");
+        return;
+      }
+
+      // If no questions needed, generate directly
+      await generatePromptsWithReasoning(userContext);
+
+    } catch (error) {
+      console.error("Generation error:", error);
+      toast.error("Failed to generate prompts");
+
+      const errorMessage: Message = {
+        id: (Date.now() + 3).toString(),
+        role: "assistant",
+        content: "Sorry, something went wrong. Please try again!",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleQuestionAnswer = (questionId: string, answer: any) => {
+    setPendingAnswers(prev => ({
+      ...prev,
+      [questionId]: answer,
+    }));
+  };
+
+  const handleGenerateWithAnswers = async () => {
+    if (!currentUserContext) return;
+
+    setIsGenerating(true);
+    toast.info("🚀 Generating with your answers...");
+
+    // Update context with answers
+    const enrichedContext: UserContext = {
+      ...currentUserContext,
+      answers: pendingAnswers,
+    };
+
+    await generatePromptsWithReasoning(enrichedContext);
+  };
+
+  const generatePromptsWithReasoning = async (context: UserContext) => {
+    try {
+      // Agent 2: Context Analyzer
+      const analyzerAgent = new ContextAnalyzerAgent();
+      const analysis = analyzerAgent.analyze(context);
+
+      // Agent 3: Reasoning Pipeline
+      const reasoningPipeline = new ReasoningPipeline();
+      const reasoning = await reasoningPipeline.reason(context, analysis);
+
+      // Show reasoning to user
+      const reasoningMessage: Message = {
+        id: (Date.now() + 10).toString(),
+        role: "reasoning",
+        content: `🧠 **AI Reasoning Process:**\n\n${reasoning.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
+        timestamp: new Date(),
+        reasoning,
+      };
+      setMessages(prev => [...prev, reasoningMessage]);
 
       // Research topic
-      const topicContext = researchTopic(intent.topic, intent.useCase);
+      toast.info("🔍 Researching your topic...");
+      const topicContext = researchTopic(context.topic, context.useCase);
+
+      // Determine tone from context or answers
+      const tone = context.answers.tone || 
+                   analysis.enrichedContext.suggestedTone || 
+                   "Professional";
 
       // Generate Better and Expert prompts
-      const betterPrompt = generateUniversalPrompt(intent.useCase, "better", intent.topic, "General", intent.tone);
-      const expertPrompt = generateUniversalPrompt(intent.useCase, "expert", intent.topic, "General", intent.tone);
+      const betterPrompt = generateUniversalPrompt(
+        context.useCase, 
+        "better", 
+        context.topic, 
+        "General", 
+        tone
+      );
+      const expertPrompt = generateUniversalPrompt(
+        context.useCase, 
+        "expert", 
+        context.topic, 
+        "General", 
+        tone
+      );
 
       // Enrich with context
       const enrichedBetter = enrichPromptWithContext(
@@ -243,27 +368,23 @@ export default function ChatHome() {
 
       // Add assistant message with prompts
       const assistantMessage: Message = {
-        id: (Date.now() + 2).toString(),
+        id: (Date.now() + 20).toString(),
         role: "assistant",
-        content: `✨ I've generated 2 intelligent prompts for your ${useCases.find(uc => uc.id === intent.useCase)?.name || "project"}!\n\nBased on: "${intent.topic}"\n\nChoose the one that fits your needs best:`,
+        content: `✨ Generated 2 AI-optimized prompts using multi-agent reasoning!\n\nStrategy: ${reasoning.strategy}\n\nChoose the one that fits your needs best:`,
         timestamp: new Date(),
         prompts: generatedPrompts,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-      toast.success("✅ Prompts generated!");
+      toast.success("✅ Prompts generated with AI reasoning!");
+
+      // Clear pending state
+      setCurrentUserContext(null);
+      setPendingAnswers({});
 
     } catch (error) {
       console.error("Generation error:", error);
       toast.error("Failed to generate prompts");
-
-      const errorMessage: Message = {
-        id: (Date.now() + 3).toString(),
-        role: "assistant",
-        content: "Sorry, something went wrong. Please try again!",
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsGenerating(false);
     }
@@ -397,6 +518,69 @@ export default function ChatHome() {
                           </div>
                         </motion.div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Questions Section */}
+                  {message.questions && message.questions.length > 0 && (
+                    <div className="mt-4 space-y-4">
+                      {message.questions.map((question, idx) => (
+                        <QuestionCard
+                          key={question.id}
+                          question={question}
+                          answer={pendingAnswers[question.id]}
+                          onAnswer={handleQuestionAnswer}
+                          index={idx}
+                        />
+                      ))}
+
+                      <Button
+                        onClick={handleGenerateWithAnswers}
+                        disabled={isGenerating}
+                        size="lg"
+                        className="w-full gap-2 mt-4"
+                      >
+                        <Zap className="h-5 w-5" />
+                        Generate Prompts with My Answers
+                      </Button>
+
+                      <Button
+                        onClick={() => generatePromptsWithReasoning(currentUserContext!)}
+                        disabled={isGenerating}
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2"
+                      >
+                        Skip Questions & Generate Now
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Reasoning Display */}
+                  {message.reasoning && (
+                    <div className="mt-4 bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-2 border-purple-500/30 rounded-xl p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="h-5 w-5 text-purple-500" />
+                        <h4 className="font-bold text-sm">AI Reasoning Process</h4>
+                      </div>
+
+                      <div className="space-y-3 text-xs">
+                        <div>
+                          <p className="font-semibold text-muted-foreground mb-1">Strategy:</p>
+                          <p className="text-sm">{message.reasoning.strategy}</p>
+                        </div>
+
+                        {message.reasoning.adaptations.length > 0 && (
+                          <div>
+                            <p className="font-semibold text-muted-foreground mb-1">Adaptations:</p>
+                            <ul className="list-disc list-inside space-y-1">
+                              {message.reasoning.adaptations.map((a, i) => (
+                                <li key={i} className="text-sm">{a}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
