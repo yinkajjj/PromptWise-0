@@ -17,6 +17,7 @@ import { analyzeTopicViability, getSuggestedCreators, getTrendingHashtags, getSe
 import { remixPrompt, type RemixType } from "@/lib/promptRemix";
 import { useCases, type UseCase } from "@/lib/useCases";
 import { generateUniversalPrompt } from "@/lib/universalPromptGenerator";
+import { researchTopic, enrichPromptWithContext } from "@/lib/topicResearcher";
 import { toast } from "sonner";
 
 type GeneratedPrompt = {
@@ -155,30 +156,64 @@ export default function Home() {
     const category = selectedSubCategory || useCases.find(u => u.id === selectedUseCase)?.categories[0] || "General";
     const useCase = useCases.find(u => u.id === selectedUseCase);
 
-    // Generate using universal system
+    // 🧠 RESEARCH THE TOPIC FIRST
+    toast.info("🔍 Researching your topic...");
+    const topicContext = researchTopic(topic, selectedUseCase);
+
+    // Show research insights to user
+    setTimeout(() => {
+      if (topicContext.knowledgeBase) {
+        toast.success(`✨ Found context: ${topicContext.domain}`, {
+          description: topicContext.keyEntities.length > 0 
+            ? `Key elements: ${topicContext.keyEntities.slice(0, 3).join(", ")}`
+            : undefined
+        });
+      }
+    }, 500);
+
+    // Generate base prompts using universal system
     const basicPrompt = generateUniversalPrompt(selectedUseCase, "basic", topic, category, tone);
     const betterPrompt = generateUniversalPrompt(selectedUseCase, "better", topic, category, tone);
     const expertPrompt = generateUniversalPrompt(selectedUseCase, "expert", topic, category, tone);
+
+    // 🎯 ENRICH PROMPTS WITH RESEARCHED CONTEXT
+    const enrichedBasic = enrichPromptWithContext(
+      typeof basicPrompt === "string" ? basicPrompt : basicPrompt[0],
+      topicContext,
+      "basic"
+    );
+
+    const enrichedBetter = enrichPromptWithContext(
+      typeof betterPrompt === "string" ? betterPrompt : betterPrompt[0],
+      topicContext,
+      "better"
+    );
+
+    const enrichedExpert = enrichPromptWithContext(
+      typeof expertPrompt === "string" ? expertPrompt : expertPrompt[0],
+      topicContext,
+      "expert"
+    );
 
     const basic: PromptTier = {
       level: "basic",
       title: "Basic Prompt",
       description: "Quick start for beginners",
-      prompt: typeof basicPrompt === "string" ? basicPrompt : basicPrompt[0],
+      prompt: enrichedBasic,
     };
 
     const better: PromptTier = {
       level: "better",
       title: "Better Prompt",
-      description: "Strategic approach with depth",
-      prompt: typeof betterPrompt === "string" ? betterPrompt : betterPrompt[0],
+      description: "Context-aware strategic approach",
+      prompt: enrichedBetter,
     };
 
     const expert: PromptTier = {
       level: "expert",
       title: "Expert Prompt",
-      description: "Professional multi-angle strategy",
-      prompt: typeof expertPrompt === "string" ? expertPrompt : expertPrompt[0],
+      description: "Research-powered professional strategy",
+      prompt: enrichedExpert,
     };
 
     setTieredPrompts([basic, better, expert]);
@@ -198,7 +233,7 @@ export default function Home() {
       setShowTopicAnalysis(false);
     }
 
-    toast.success(`✨ Generated 3 ${useCase?.name || "unique"} prompts!`);
+    toast.success(`✨ Generated 3 research-powered ${useCase?.name || "unique"} prompts!`);
   };
 
   const handleCopyPrompt = (prompt: string, level: string) => {
